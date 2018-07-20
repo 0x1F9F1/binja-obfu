@@ -1,0 +1,4 @@
+[submodule "vendor/binaryninja-api"]
+	path = vendor/binaryninja-api
+	url = git@github.com:Vector35/binaryninja-api.git
+	branch = dev
