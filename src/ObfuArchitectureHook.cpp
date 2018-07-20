@@ -6,8 +6,6 @@ BinaryViewAssociatedDataStore<std::unordered_map<uintptr_t, PatchData>> g_PatchD
 
 PatchData* GetPatch(LowLevelILFunction& il, uintptr_t address)
 {
-    // auto function = il.GetFunction();
-
     auto function = BNGetLowLevelILOwnerFunction(il.m_object);
 
     if (function == nullptr)
@@ -30,7 +28,7 @@ PatchData* GetPatch(LowLevelILFunction& il, uintptr_t address)
     }
 
     auto patch_data = view_data->find(address);
-    
+
     if (patch_data == view_data->end())
     {
         return nullptr;
@@ -63,4 +61,3 @@ bool ObfuArchitectureHook::GetInstructionLowLevelIL(const uint8_t* data, uint64_
 
     return ArchitectureHook::GetInstructionLowLevelIL(data, addr, len, il);
 }
-

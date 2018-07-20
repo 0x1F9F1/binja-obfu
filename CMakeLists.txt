@@ -24,6 +24,8 @@ else()
         CACHE PATH "Binary Ninja user plugins directory")
 endif()
 
+message("Binary Ninja Core at " ${BINJA_CORE_LIBRARY})
+
 add_subdirectory(vendor)
 
 file(GLOB ${PROJECT_NAME}_SRCS
@@ -36,25 +38,18 @@ add_library(${PROJECT_NAME} SHARED
 find_library(BINJA_CORE_LIBRARY binaryninjacore
     HINTS ${BINJA_BIN_DIR})
 
-find_library(BINJA_API_LIBRARY binaryninjaapi
-    HINTS ${CMAKE_CURRENT_SOURCE_DIR}/vendor/binaryninja-api/bin/Release)
-
-find_file(BINJA_API_LIBRARY binaryninjaapi)
-
-message("Core at " ${BINJA_CORE_LIBRARY})
-
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
     include
     vendor/binaryninja-api)
 
 target_link_libraries(${PROJECT_NAME}
-    ${BINJA_CORE_LIBRARY} ${BINJA_API_LIBRARY})
+    ${BINJA_CORE_LIBRARY} binaryninjaapi)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD 14
     CXX_STANDARD_REQUIRED ON
-    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin
 )
 
