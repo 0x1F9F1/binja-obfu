@@ -17,7 +17,7 @@ protected:
     using SessionDataMap = std::unordered_map<BNBinaryView*, std::unique_ptr<T>>;
 
     SessionDataMap m_SessionData;
-    std::mutex m_Mutex;
+    mutable std::mutex m_Mutex;
 
     void DestructBinaryView(BNBinaryView* view) override
     {
@@ -39,6 +39,11 @@ public:
         }
 
         return nullptr;
+    }
+
+    const T* Get(BNBinaryView* view) const
+    {
+        return const_cast<BinaryViewAssociatedDataStore*>(this)->Get(view);
     }
 
     T* GetOrCreate(BNBinaryView* view)

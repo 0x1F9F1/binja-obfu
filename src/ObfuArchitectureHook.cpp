@@ -9,30 +9,30 @@ namespace PatchBuilder
 {
     BinaryViewAssociatedDataStore<PatchCollection> PatchStore;
 
-    Patch* GetPatch(LowLevelILFunction& il, uintptr_t address)
+    const Patch* GetPatch(LowLevelILFunction& il, uintptr_t address)
     {
-        auto function = BNGetLowLevelILOwnerFunction(il.m_object);
+        BNFunction* function = BNGetLowLevelILOwnerFunction(il.m_object);
 
         if (function == nullptr)
         {
             return nullptr;
         }
 
-        auto view = BNGetFunctionData(function);
+        BNBinaryView* view = BNGetFunctionData(function);
 
         if (view == nullptr)
         {
             return nullptr;
         }
 
-        auto view_data = PatchStore.Get(view);
+        const PatchCollection* patches = PatchStore.Get(view);
 
-        if (view_data == nullptr)
+        if (patches == nullptr)
         {
             return nullptr;
         }
 
-        return view_data->GetPatch(address);
+        return patches->GetPatch(address);
     }
 
     void AddPatch(BinaryView& view, uintptr_t address, Patch patch)
@@ -47,7 +47,7 @@ namespace PatchBuilder
         m_Patches.emplace(address, std::move(patch));
     }
 
-    Patch* PatchCollection::GetPatch(uintptr_t address)
+    const Patch* PatchCollection::GetPatch(uintptr_t address) const
     {
         std::lock_guard<std::mutex> guard(m_Mutex);
 
@@ -61,9 +61,9 @@ namespace PatchBuilder
         return nullptr;
     }
 
-    bool Patch::Evaluate(LowLevelILFunction& il)
+    bool Patch::Evaluate(LowLevelILFunction& il) const
     {
-        std::deque<size_t> values;
+        std::vector<size_t> operands;
 
         for (const Token& token : Tokens)
         {
@@ -73,54 +73,48 @@ namespace PatchBuilder
                 {
                     BNLowLevelILOperation operation = static_cast<BNLowLevelILOperation>(token.Value);
 
-                    if (values.size() < 3)
+                    if (operands.size() < 3)
                     {
-                        LogError("Missing Instruction Operands (expected 3, got %zu)", values.size());
+                        LogError("Missing Instruction Operands (expected 3, got %zu)", operands.size());
 
                         return false;
                     }
 
-                    size_t size = values.back();
-                    values.pop_back();
+                    size_t size = operands.back();
+                    operands.pop_back();
 
-                    uint32_t flags = static_cast<uint32_t>(values.back());
-                    values.pop_back();
+                    uint32_t flags = static_cast<uint32_t>(operands.back());
+                    operands.pop_back();
 
-                    size_t expr_count = values.back();
-                    values.pop_back();
+                    size_t operand_count = operands.back();
+                    operands.pop_back();
 
-                    if (values.size() < expr_count)
+                    if (operands.size() < operand_count)
                     {
-                        LogError("Missing Exprs (expected %zu, got %zu)", expr_count, values.size());
+                        LogError("Missing Exprs (expected %zu, got %zu)", operand_count, operands.size());
 
                         return false;
                     }
 
-                    ExprId exprs[4]{};
+                    size_t exprs[4]{};
+                    auto expr_iter = operands.end() - operand_count;
+                    std::copy_n(expr_iter, operand_count, exprs);
+                    operands.erase(expr_iter, operands.end());
 
-                    for (size_t i = expr_count; i--;)
-                    {
-                        exprs[i] = values.back();
-
-                        values.pop_back();
-                    }
-
-                    ExprId expr = il.AddExprWithLocation(operation, ILSourceLocation(), size, flags,
-                        exprs[0],
-                        exprs[1],
-                        exprs[2],
-                        exprs[3]
+                    ExprId expr = il.AddExpr(operation, size, flags,
+                        static_cast<ExprId>(exprs[0]),
+                        static_cast<ExprId>(exprs[1]),
+                        static_cast<ExprId>(exprs[2]),
+                        static_cast<ExprId>(exprs[3])
                     );
 
-                    // LogInfo("Operation %zX at expr %zu (size %zu, flags %u, %zu operands - %zu %zu %zu %zu)", operation, expr, size, flags, expr_count, exprs[0], exprs[1], exprs[2], exprs[3]);
-
-                    values.push_back(static_cast<size_t>(expr));
+                    operands.push_back(static_cast<size_t>(expr));
 
                 } break;
 
                 case TokenType::Operand:
                 {
-                    values.push_back(token.Value);
+                    operands.push_back(token.Value);
                 } break;
 
                 default:
@@ -132,13 +126,9 @@ namespace PatchBuilder
             }
         }
 
-        for (; !values.empty(); values.pop_front())
+        for (size_t expr : operands)
         {
-            ExprId expr = (ExprId)values.front();
-
-            // LogInfo("Adding expr %zu", expr);
-
-            il.AddInstruction(expr);
+            il.AddInstruction(static_cast<ExprId>(expr));
         }
 
         return true;
@@ -147,7 +137,7 @@ namespace PatchBuilder
 
 bool ObfuArchitectureHook::GetInstructionLowLevelIL(const uint8_t* data, uint64_t addr, size_t& len, LowLevelILFunction& il)
 {
-    PatchBuilder::Patch* patch = PatchBuilder::GetPatch(il, addr);
+    const PatchBuilder::Patch* patch = PatchBuilder::GetPatch(il, addr);
 
     if (patch && patch->Evaluate(il))
     {

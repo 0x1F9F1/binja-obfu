@@ -26,20 +26,20 @@ namespace PatchBuilder
         size_t Size;
         std::vector<Token> Tokens;
 
-        bool Evaluate(LowLevelILFunction& il);
+        bool Evaluate(LowLevelILFunction& il) const;
     };
 
     struct PatchCollection
     {
         std::unordered_map<uintptr_t, Patch> m_Patches;
-        std::mutex m_Mutex;
+        mutable std::mutex m_Mutex;
 
         void AddPatch(uintptr_t address, Patch patch);
-        Patch* GetPatch(uintptr_t address);
+        const Patch* GetPatch(uintptr_t address) const;
     };
 
     void AddPatch(BinaryView& view, uintptr_t address, Patch patch);
-    Patch* GetPatch(LowLevelILFunction& il, uintptr_t address);
+    const Patch* GetPatch(LowLevelILFunction& il, uintptr_t address);
 }
 
 class ObfuArchitectureHook
