@@ -16,6 +16,7 @@
 #include "BinaryNinja.h"
 
 #include "ObfuArchitectureHook.h"
+#include "PatchBuilder.h"
 
 void RegisterObfuHook(const std::string& arch_name)
 {

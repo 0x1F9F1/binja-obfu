@@ -13,19 +13,36 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "ObfuArchitectureHook.h"
-#include "PatchBuilder.h"
+#pragma once
 
-bool ObfuArchitectureHook::GetInstructionLowLevelIL(const uint8_t* data, uint64_t addr, size_t& len, LowLevelILFunction& il)
+#include "BinaryNinja.h"
+
+#include <vector>
+
+#include <mutex>
+
+namespace PatchBuilder
 {
-    const PatchBuilder::Patch* patch = PatchBuilder::GetPatch(il, addr);
-
-    if (patch && patch->Evaluate(il))
+    enum class TokenType
     {
-        len = patch->Size;
+        Instruction,
+        Operand
+    };
 
-        return true;
-    }
+    struct Token
+    {
+        TokenType Type;
+        size_t Value;
+    };
 
-    return ArchitectureHook::GetInstructionLowLevelIL(data, addr, len, il);
+    struct Patch
+    {
+        size_t Size;
+        std::vector<Token> Tokens;
+
+        bool Evaluate(LowLevelILFunction& il) const;
+    };
+
+    void AddPatch(BinaryView& view, uintptr_t address, Patch patch);
+    const Patch* GetPatch(LowLevelILFunction& il, uintptr_t address);
 }
