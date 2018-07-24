@@ -17,6 +17,7 @@
 
 #include "ObfuArchitectureHook.h"
 #include "PatchBuilder.h"
+#include "ObfuPasses.h"
 
 void RegisterObfuHook(const std::string& arch_name)
 {
@@ -84,6 +85,7 @@ extern "C"
         RegisterObfuHook("x86_64");
 
         PluginCommand::RegisterForLowLevelILInstruction("Add Test Patch", ":thinking:", &ProcessPatch);
+        PluginCommand::RegisterForFunction("Label Indirect Branches", ":thonking:", &LabelIndirectBranches);
 
         LogInfo("Loaded ObfuArchitectureHook");
 
