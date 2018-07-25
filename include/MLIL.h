@@ -18,8 +18,8 @@
 #include "BinaryNinja.h"
 
 bool MLIL_GetInstructionTokens(
-    MediumLevelILInstruction& insn,
+    const MediumLevelILInstruction& insn,
     std::vector<InstructionTextToken>& tokens);
 
 std::string MLIL_ToString(
-    MediumLevelILInstruction& insn);
+    const MediumLevelILInstruction& insn);

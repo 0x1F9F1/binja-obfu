@@ -42,7 +42,7 @@ target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
     include
     vendor/binaryninja-api
     vendor/fmt/include
-    vendor/json/include)
+    vendor/bitsery/include)
 
 target_link_libraries(${PROJECT_NAME}
     ${BINJA_CORE_LIBRARY} binaryninjaapi fmt)

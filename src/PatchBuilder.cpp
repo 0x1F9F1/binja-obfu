@@ -21,6 +21,12 @@
 static const std::string METADATA_KEY = "OBFU_PATCHES";
 static const std::string METADATA_VERSION = "0.0.0";
 
+#include <bitsery/bitsery.h>
+#include <bitsery/adapter/buffer.h>
+#include <bitsery/traits/vector.h>
+#include <bitsery/flexible.h>
+#include <bitsery/flexible/unordered_map.h>
+
 namespace PatchBuilder
 {
     struct PatchCollection
@@ -95,30 +101,6 @@ namespace PatchBuilder
         patches->Save(view);
     }
 
-    void to_json(json & j, const Token & p)
-    {
-        j.emplace("t", p.Type);
-        j.emplace("v", p.Value);
-    }
-
-    void from_json(const json & j, Token & p)
-    {
-        p.Type = j.at("t").get<TokenType>();
-        p.Value = j.at("v").get<size_t>();
-    }
-
-    void to_json(json & j, const Patch & p)
-    {
-        j.emplace("s", p.Size);
-        j.emplace("t", p.Tokens);
-    }
-
-    void from_json(const json & j, Patch & p)
-    {
-        p.Size = j.at("s").get<size_t>();
-        p.Tokens = j.at("t").get<std::vector<Token>>();
-    }
-
     void PatchCollection::AddPatch(uintptr_t address, Patch patch)
     {
         std::lock_guard<std::mutex> guard(m_Mutex);
@@ -140,14 +122,37 @@ namespace PatchBuilder
         return nullptr;
     }
 
+    using namespace bitsery;
+
+    using Buffer = std::vector<uint8_t>;
+    using OutputAdapter = OutputBufferAdapter<Buffer>;
+    using InputAdapter = InputBufferAdapter<Buffer>;
+
+    template <typename S>
+    void serialize(S& s, Token& o)
+    {
+        s.value1b(reinterpret_cast<std::underlying_type_t<TokenType>&>(o.Type));
+        s.value8b(o.Value);
+    };
+
+    template <typename S>
+    void serialize(S& s, Patch& o)
+    {
+        s.value8b(o.Size);
+        s.container(o.Tokens, 4096);
+    };
+
     void PatchCollection::Save(BinaryView& view)
     {
-        json j;
+        Buffer b;
 
-        j.emplace("version", METADATA_VERSION);
-        j.emplace("patches", m_Patches);
+        quickSerialization<OutputAdapter>(b, m_Patches);
 
-        Ref<Metadata> patches = new Metadata(j.dump());
+        DataBuffer db(b.data(), b.size());
+        db.ZlibCompress(db);
+        b = std::vector<uint8_t>{ &db[0], &db[db.GetLength()] };
+
+        Ref<Metadata> patches = new Metadata(b);
 
         view.StoreMetadata(METADATA_KEY, patches);
     }
@@ -156,26 +161,15 @@ namespace PatchBuilder
     {
         Ref<Metadata> patches = view.QueryMetadata(METADATA_KEY);
 
-        if (patches && patches->IsString())
+        if (patches && patches->IsRaw())
         {
-            json j = json::parse(patches->GetString());
+            Buffer b = patches->GetRaw();
 
-            std::string version = j.at("version").get<std::string>();
+            DataBuffer db(b.data(), b.size());
+            db.ZlibDecompress(db);
+            b = std::vector<uint8_t>{ &db[0], &db[db.GetLength()] };
 
-            if (version == METADATA_VERSION)
-            {
-                {
-                    std::lock_guard<std::mutex> guard(m_Mutex);
-
-                    m_Patches = j.at("patches").get<std::unordered_map<uintptr_t, Patch>>();
-                }
-
-                BinjaLog(InfoLog, "Loaded {0} patches for {1}", m_Patches.size(), view.GetFile()->GetFilename());
-            }
-            else
-            {
-                BinjaLog(ErrorLog, "Outdated patch version {0} for {1}", version, view.GetFile()->GetFilename());
-            }
+            quickDeserialization<InputAdapter>({ b.begin(), b.end() }, m_Patches);
         }
     }
 

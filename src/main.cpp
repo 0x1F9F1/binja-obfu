@@ -92,11 +92,13 @@ extern "C"
 {
     BINARYNINJAPLUGIN bool CorePluginInit()
     {
-        RegisterObfuHook("x86");
-        RegisterObfuHook("x86_64");
+        for (const char* arch : { "x86", "x86_64" })
+        {
+            RegisterObfuHook(arch);
+        }
 
-        PluginCommand::RegisterForLowLevelILInstruction("Add Test Patch", ":thinking:", &ProcessPatch);
-        PluginCommand::RegisterForFunction("Label Indirect Branches 123", ":thonking:", &LabelIndirectBranches);
+        // PluginCommand::RegisterForLowLevelILInstruction("Add Test Patch", ":thinking:", &ProcessPatch);
+        // PluginCommand::RegisterForFunction("Label Indirect Branches 123", ":thonking:", &LabelIndirectBranches);
         PluginCommand::RegisterForFunction("Fix Obfuscation 123", ":oof:", &FixObfuscationTask);
 
         BinjaLog(InfoLog, "Loaded ObfuArchitectureHook");
