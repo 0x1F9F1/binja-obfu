@@ -277,9 +277,8 @@ size_t FixJumps(BinaryView* view, Function* func)
 
             for (size_t i = good_pops; i--;)
             {
-                // reg = reg + adjustment
                 patches.insert(patches.end(), std::initializer_list<PatchBuilder::Token> {
-                    { PatchBuilder::TokenType::Operand, LLIL_TEMP(i) },
+                        { PatchBuilder::TokenType::Operand, LLIL_TEMP(i) },
                         { PatchBuilder::TokenType::Operand, 0 }, // Operand Count
                         { PatchBuilder::TokenType::Operand, 0 }, // Flags
                         { PatchBuilder::TokenType::Operand, address_size }, // Operand Size
@@ -288,10 +287,7 @@ size_t FixJumps(BinaryView* view, Function* func)
                     { PatchBuilder::TokenType::Operand, 0 }, // Flags
                     { PatchBuilder::TokenType::Operand, address_size }, // Operand Size
                     { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_SET_REG },
-                });
 
-                // reg = reg + adjustment
-                patches.insert(patches.end(), std::initializer_list<PatchBuilder::Token> {
                             { PatchBuilder::TokenType::Operand, LLIL_TEMP(i) },
                         { PatchBuilder::TokenType::Operand, 1 }, // Operand Count
                         { PatchBuilder::TokenType::Operand, 0 }, // Flags
@@ -364,6 +360,37 @@ void LabelIndirectBranches(
     }
 }
 
+void LabelPossibleTails(BinaryView* view, Function* func)
+{
+    Ref<Architecture> arch = func->GetArchitecture();
+
+    Ref<LowLevelILFunction> llil = func->GetLowLevelIL();
+
+    const uint32_t stack_register = arch->GetStackPointerRegister();
+    const size_t address_size = view->GetAddressSize();
+
+    for (Ref<BasicBlock> block : llil->GetBasicBlocks())
+    {
+        LowLevelILInstruction last = llil->GetInstruction(block->GetEnd() - 1);
+
+        RegisterValue stack_register_value = last.GetRegisterValue(stack_register);
+
+        if (stack_register_value.state != StackFrameOffset)
+        {
+            continue;
+        }
+
+        if (stack_register_value.value == 0)
+        {
+            if (func->GetInstructionHighlight(arch, last.address).alpha == 0)
+            {
+                func->SetUserInstructionHighlight(arch, last.address, MagentaHighlightColor);
+            }
+        }
+    }
+}
+
+
 void FixObfuscation(
     BackgroundTask* task,
     BinaryView* view,
@@ -385,7 +412,7 @@ void FixObfuscation(
 
         while (func->NeedsUpdate())
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
 
         if (task)
@@ -396,7 +423,7 @@ void FixObfuscation(
         if (FixTails(view, func) ||
             FixJumps(view, func))
         {
-            // Boop
+            // Beep Boop
         }
         else
         {
@@ -410,6 +437,7 @@ void FixObfuscation(
     }
 
     LabelIndirectBranches(view, func);
+    LabelPossibleTails(view, func);
 
     PatchBuilder::SavePatches(*view);
 
