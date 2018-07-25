@@ -170,11 +170,11 @@ namespace PatchBuilder
                     m_Patches = j.at("patches").get<std::unordered_map<uintptr_t, Patch>>();
                 }
 
-                LogInfo("Loaded %zu patches for %s", m_Patches.size(), view.GetFile()->GetFilename());
+                BinjaLog(InfoLog, "Loaded {0} patches for {1}", m_Patches.size(), view.GetFile()->GetFilename());
             }
             else
             {
-                LogError("Oudated patch version %s for %s", version.c_str(), view.GetFile()->GetFilename().c_str());
+                BinjaLog(ErrorLog, "Outdated patch version {0} for {1}", version, view.GetFile()->GetFilename());
             }
         }
     }
@@ -193,7 +193,7 @@ namespace PatchBuilder
 
                     if (operands.size() < 3)
                     {
-                        LogError("Missing Instruction Operands (expected 3, got %zu)", operands.size());
+                        BinjaLog(ErrorLog, "Missing Instruction Operands (expected 3, got {0})", operands.size());
 
                         return false;
                     }
@@ -211,12 +211,12 @@ namespace PatchBuilder
 
                     if (expected_operand_count != operand_count)
                     {
-                        LogError("Mismatched operand count (expected %zu, got %zu)", expected_operand_count, operand_count);
+                        BinjaLog(ErrorLog, "Mismatched operand count (expected {0}, got {1})", expected_operand_count, operand_count);
                     }
 
                     if (operands.size() < operand_count)
                     {
-                        LogError("Missing Exprs (expected %zu, got %zu)", operand_count, operands.size());
+                        BinjaLog(ErrorLog, "Missing Exprs (expected {0}, got {1})", operand_count, operands.size());
 
                         return false;
                     }
@@ -244,7 +244,7 @@ namespace PatchBuilder
 
                 default:
                 {
-                    LogError("Bad Token: %i - %zX", token.Type, token.Value);
+                    BinjaLog(ErrorLog, "Bad Token: {0} - {1}", static_cast<int>(token.Type), token.Value);
 
                     return false;
                 } break;

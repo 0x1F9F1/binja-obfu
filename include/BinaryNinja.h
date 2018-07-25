@@ -21,4 +21,12 @@
 #include "lowlevelilinstruction.h"
 #include "mediumlevelilinstruction.h"
 
+#include "fmt/format.h"
+
 using namespace BinaryNinja;
+
+template <typename String, typename... Args>
+void BinjaLog(BNLogLevel level, const String& format, const Args&... args)
+{
+    BNLog(level, "%s", fmt::format(format, args...).c_str());
+}

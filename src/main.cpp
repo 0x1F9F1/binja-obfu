@@ -89,7 +89,7 @@ extern "C"
         PluginCommand::RegisterForLowLevelILInstruction("Add Test Patch", ":thinking:", &ProcessPatch);
         PluginCommand::RegisterForFunction("Label Indirect Branches 123", ":thonking:", &LabelIndirectBranches);
 
-        LogInfo("Loaded ObfuArchitectureHook");
+        BinjaLog(InfoLog, "Loaded ObfuArchitectureHook");
 
         return true;
     }
