@@ -506,7 +506,8 @@ void LabelPossibleTails(BinaryView* view, Function* func)
 void FixObfuscation(
     BackgroundTask* task,
     BinaryView* view,
-    Function* func)
+    Function* func,
+    bool auto_save)
 {
     size_t passes = 1;
 
@@ -552,7 +553,10 @@ void FixObfuscation(
     LabelIndirectBranches(view, func);
     LabelPossibleTails(view, func);
 
-    PatchBuilder::SavePatches(*view);
+    if (auto_save)
+    {
+        PatchBuilder::SavePatches(*view);
+    }
 
     BinjaLog(InfoLog, "Deobfuscated {0} after {1} passes", func_name, passes);
 }

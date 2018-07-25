@@ -24,4 +24,5 @@ void LabelIndirectBranches(
 void FixObfuscation(
     BackgroundTask* task,
     BinaryView* view,
-    Function* func);
+    Function* func,
+    bool auto_save);

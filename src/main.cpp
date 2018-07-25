@@ -31,65 +31,16 @@ void FixObfuscationBackgroundTask(BinaryView* view, Function* func)
 {
     Ref<BackgroundTaskThread> task = new BackgroundTaskThread("De-Obfuscating");
 
-    task->Run(&FixObfuscation, Ref<BinaryView>(view), Ref<Function>(func));
+    task->Run(&FixObfuscation, Ref<BinaryView>(view), Ref<Function>(func), true);
 }
 
 void FixObfuscationTask(BinaryView* view, Function* func)
 {
-    FixObfuscation(nullptr, view, func);
+    FixObfuscation(nullptr, view, func, false);
 }
 
-void ProcessPatch(BinaryView* view, const LowLevelILInstruction& insn)
+void SavePatchesTask(BinaryView* view)
 {
-    // ecx = ecx + 0xDEADBEEF
-    // edx = edx + 0xCAFEF00D
-
-    PatchBuilder::AddPatch(*view, insn.address, {
-        view->GetInstructionLength(insn.function->GetArchitecture(), insn.address), {
-            // ecx = ecx + 0xDEADBEEF
-                { PatchBuilder::TokenType::Operand, view->GetDefaultArchitecture()->GetRegisterByName("ecx") },
-                            { PatchBuilder::TokenType::Operand, view->GetDefaultArchitecture()->GetRegisterByName("ecx") },
-                        { PatchBuilder::TokenType::Operand, 1 }, // Operand Count
-                        { PatchBuilder::TokenType::Operand, 0 }, // Flags
-                        { PatchBuilder::TokenType::Operand, 4 }, // Operand Size
-                        { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_REG },
-                    { PatchBuilder::TokenType::Operand, 0xDEADBEEF },
-                    { PatchBuilder::TokenType::Operand, 1 }, // Operand Count
-                    { PatchBuilder::TokenType::Operand, 0 }, // Flags
-                    { PatchBuilder::TokenType::Operand, 4 }, // Operand Size
-                    { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_CONST },
-                { PatchBuilder::TokenType::Operand, 2 }, // Operand Count
-                { PatchBuilder::TokenType::Operand, 0 }, // Flags
-                { PatchBuilder::TokenType::Operand, 4 }, // Operand Size
-                { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_ADD },
-            { PatchBuilder::TokenType::Operand, 2 }, // Operand Count
-            { PatchBuilder::TokenType::Operand, 0 }, // Flags
-            { PatchBuilder::TokenType::Operand, 4 }, // Operand Size
-            { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_SET_REG },
-
-            // edx = edx + 0xCAFEF00D
-                { PatchBuilder::TokenType::Operand, view->GetDefaultArchitecture()->GetRegisterByName("edx") },
-                            { PatchBuilder::TokenType::Operand, view->GetDefaultArchitecture()->GetRegisterByName("edx") },
-                        { PatchBuilder::TokenType::Operand, 1 }, // Operand Count
-                        { PatchBuilder::TokenType::Operand, 0 }, // Flags
-                        { PatchBuilder::TokenType::Operand, 4 }, // Operand Size
-                        { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_REG },
-                    { PatchBuilder::TokenType::Operand, 0xCAFEF00D },
-                    { PatchBuilder::TokenType::Operand, 1 }, // Operand Count
-                    { PatchBuilder::TokenType::Operand, 0 }, // Flags
-                    { PatchBuilder::TokenType::Operand, 4 }, // Operand Size
-                    { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_CONST },
-                { PatchBuilder::TokenType::Operand, 2 }, // Operand Count
-                { PatchBuilder::TokenType::Operand, 0 }, // Flags
-                { PatchBuilder::TokenType::Operand, 4 }, // Operand Size
-                { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_ADD },
-            { PatchBuilder::TokenType::Operand, 2 }, // Operand Count
-            { PatchBuilder::TokenType::Operand, 0 }, // Flags
-            { PatchBuilder::TokenType::Operand, 4 }, // Operand Size
-            { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_SET_REG },
-        }
-    });
-
     PatchBuilder::SavePatches(*view);
 }
 
@@ -102,10 +53,9 @@ extern "C"
             RegisterObfuHook(arch);
         }
 
-        // PluginCommand::RegisterForLowLevelILInstruction("Add Test Patch", ":thinking:", &ProcessPatch);
-        // PluginCommand::RegisterForFunction("Label Indirect Branches 123", ":thonking:", &LabelIndirectBranches);
         PluginCommand::RegisterForFunction("Fix Obfuscation 123", ":oof:", &FixObfuscationBackgroundTask);
         PluginCommand::RegisterForFunction("Fix Obfuscation 456", ":oof:", &FixObfuscationTask);
+        PluginCommand::Register("Save Patches", ":oof:", &SavePatchesTask);
 
         BinjaLog(InfoLog, "Loaded ObfuArchitectureHook");
 
