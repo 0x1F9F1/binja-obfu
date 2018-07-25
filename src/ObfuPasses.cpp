@@ -44,7 +44,7 @@ void LabelIndirectBranches(
                 true_val = true_val.GetNonSSAForm();
                 false_val = false_val.GetNonSSAForm();
 
-                func->SetCommentForAddress(last.address, fmt::format("# {0} @ {1:x}  if ({2}) then {3} else {4}",
+                func->SetCommentForAddress(last.address, fmt::format("{0} @ {1:x}  if ({2}) then {3} else {4}",
                     condition.instructionIndex,
                     condition.address,
                     MLIL_ToString(condition),
