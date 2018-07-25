@@ -1,6 +1,6 @@
 [submodule "vendor/binaryninja-api"]
 	path = vendor/binaryninja-api
-	url = git@github.com:Vector35/binaryninja-api.git
+    url = git@github.com:DatBrick/binaryninja-api.git
 	branch = dev
 [submodule "vendor/fmt"]
 	path = vendor/fmt
