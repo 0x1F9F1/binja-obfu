@@ -212,6 +212,8 @@ namespace PatchBuilder
                     if (expected_operand_count != operand_count)
                     {
                         BinjaLog(ErrorLog, "Mismatched operand count (expected {0}, got {1})", expected_operand_count, operand_count);
+
+                        return false;
                     }
 
                     if (operands.size() < operand_count)

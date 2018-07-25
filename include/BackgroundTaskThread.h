@@ -37,8 +37,6 @@ public:
         {
             std::invoke(std::move(func), task.GetPtr(), std::move(args)...);
 
-            BinjaLog(InfoLog, "Done");
-
             task->Finish();
             task->thread_.detach();
 
