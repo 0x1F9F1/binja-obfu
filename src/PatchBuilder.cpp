@@ -18,6 +18,9 @@
 
 #include <unordered_map>
 
+static const std::string METADATA_KEY = "OBFU_PATCHES";
+static const std::string METADATA_VERSION = "0.0.0";
+
 namespace PatchBuilder
 {
     struct PatchCollection
@@ -27,9 +30,37 @@ namespace PatchBuilder
 
         void AddPatch(uintptr_t address, Patch patch);
         const Patch* GetPatch(uintptr_t address) const;
+
+        void Save(BinaryView& view);
+        void Load(BinaryView& view);
     };
 
     BinaryViewAssociatedDataStore<PatchCollection> PatchStore;
+
+    PatchCollection* GetPatchCollection(BNBinaryView* view)
+    {
+        if (PatchCollection* patches = PatchStore.Get(view))
+        {
+            return patches;
+        }
+
+        std::unique_ptr<PatchCollection> patches(new PatchCollection());
+
+        Ref<BinaryView> ref_view = new BinaryView(view);
+
+        patches->Load(*ref_view);
+
+        PatchStore.Set(view, std::move(patches));
+
+        return PatchStore.Get(view);
+    }
+
+    void AddPatch(BinaryView& view, uintptr_t address, Patch patch)
+    {
+        PatchCollection* patches = GetPatchCollection(view.m_object);
+        
+        patches->AddPatch(address, std::move(patch));
+    }
 
     const Patch* GetPatch(LowLevelILFunction& il, uintptr_t address)
     {
@@ -47,7 +78,7 @@ namespace PatchBuilder
             return nullptr;
         }
 
-        const PatchCollection* patches = PatchStore.Get(view);
+        const PatchCollection* patches = GetPatchCollection(view);
 
         if (patches == nullptr)
         {
@@ -57,9 +88,35 @@ namespace PatchBuilder
         return patches->GetPatch(address);
     }
 
-    void AddPatch(BinaryView& view, uintptr_t address, Patch patch)
+    void SavePatches(BinaryView & view)
     {
-        PatchStore.GetOrCreate(view.m_object)->AddPatch(address, std::move(patch));
+        PatchCollection* patches = GetPatchCollection(view.m_object);
+
+        patches->Save(view);
+    }
+
+    void to_json(json & j, const Token & p)
+    {
+        j.emplace("t", p.Type);
+        j.emplace("v", p.Value);
+    }
+
+    void from_json(const json & j, Token & p)
+    {
+        p.Type = j.at("t").get<TokenType>();
+        p.Value = j.at("v").get<size_t>();
+    }
+
+    void to_json(json & j, const Patch & p)
+    {
+        j.emplace("s", p.Size);
+        j.emplace("t", p.Tokens);
+    }
+
+    void from_json(const json & j, Patch & p)
+    {
+        p.Size = j.at("s").get<size_t>();
+        p.Tokens = j.at("t").get<std::vector<Token>>();
     }
 
     void PatchCollection::AddPatch(uintptr_t address, Patch patch)
@@ -81,6 +138,45 @@ namespace PatchBuilder
         }
 
         return nullptr;
+    }
+
+    void PatchCollection::Save(BinaryView& view)
+    {
+        json j;
+
+        j.emplace("version", METADATA_VERSION);
+        j.emplace("patches", m_Patches);
+
+        Ref<Metadata> patches = new Metadata(j.dump());
+
+        view.StoreMetadata(METADATA_KEY, patches);
+    }
+
+    void PatchCollection::Load(BinaryView& view)
+    {
+        Ref<Metadata> patches = view.QueryMetadata(METADATA_KEY);
+
+        if (patches && patches->IsString())
+        {
+            json j = json::parse(patches->GetString());
+
+            std::string version = j.at("version").get<std::string>();
+
+            if (version == METADATA_VERSION)
+            {
+                {
+                    std::lock_guard<std::mutex> guard(m_Mutex);
+
+                    m_Patches = j.at("patches").get<std::unordered_map<uintptr_t, Patch>>();
+                }
+
+                LogInfo("Loaded %zu patches for %s", m_Patches.size(), view.GetFile()->GetFilename());
+            }
+            else
+            {
+                LogError("Oudated patch version %s for %s", version.c_str(), view.GetFile()->GetFilename().c_str());
+            }
+        }
     }
 
     bool Patch::Evaluate(LowLevelILFunction& il) const

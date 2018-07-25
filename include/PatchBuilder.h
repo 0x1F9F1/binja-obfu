@@ -17,8 +17,10 @@
 
 #include "BinaryNinja.h"
 
-#include <vector>
+#include "nlohmann/json.hpp"
+using json = nlohmann::json;
 
+#include <vector>
 #include <mutex>
 
 namespace PatchBuilder
@@ -45,4 +47,12 @@ namespace PatchBuilder
 
     void AddPatch(BinaryView& view, uintptr_t address, Patch patch);
     const Patch* GetPatch(LowLevelILFunction& il, uintptr_t address);
+
+    void SavePatches(BinaryView& view);
+
+    void to_json(json& j, const Token& p);
+    void from_json(const json& j, Token& p);
+
+    void to_json(json& j, const Patch& p);
+    void from_json(const json& j, Patch& p);
 }

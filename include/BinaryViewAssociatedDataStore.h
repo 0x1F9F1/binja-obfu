@@ -56,22 +56,15 @@ public:
         return nullptr;
     }
 
+    void Set(BNBinaryView* view, std::unique_ptr<T> value)
+    {
+        std::lock_guard<std::mutex> guard(m_Mutex);
+
+        m_SessionData.emplace(view, std::move(value));
+    }
+
     const T* Get(BNBinaryView* view) const
     {
         return const_cast<BinaryViewAssociatedDataStore*>(this)->Get(view);
-    }
-
-    T* GetOrCreate(BNBinaryView* view)
-    {
-        T* result = Get(view);
-
-        if (result != nullptr)
-        {
-            return result;
-        }
-
-        std::lock_guard<std::mutex> guard(m_Mutex);
-
-        return m_SessionData.emplace(view, std::make_unique<T>()).first->second.get();
     }
 };

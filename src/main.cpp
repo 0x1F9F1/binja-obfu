@@ -75,6 +75,8 @@ void ProcessPatch(BinaryView* view, const LowLevelILInstruction& insn)
             { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_SET_REG },
         }
     });
+
+    PatchBuilder::SavePatches(*view);
 }
 
 extern "C"
