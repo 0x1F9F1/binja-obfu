@@ -27,11 +27,16 @@ void RegisterObfuHook(const std::string& arch_name)
     Architecture::Register(hook);
 }
 
-void FixObfuscationTask(BinaryView* view, Function* func)
+void FixObfuscationBackgroundTask(BinaryView* view, Function* func)
 {
     Ref<BackgroundTaskThread> task = new BackgroundTaskThread("De-Obfuscating");
 
     task->Run(&FixObfuscation, Ref<BinaryView>(view), Ref<Function>(func));
+}
+
+void FixObfuscationTask(BinaryView* view, Function* func)
+{
+    FixObfuscation(nullptr, view, func);
 }
 
 void ProcessPatch(BinaryView* view, const LowLevelILInstruction& insn)
@@ -99,7 +104,8 @@ extern "C"
 
         // PluginCommand::RegisterForLowLevelILInstruction("Add Test Patch", ":thinking:", &ProcessPatch);
         // PluginCommand::RegisterForFunction("Label Indirect Branches 123", ":thonking:", &LabelIndirectBranches);
-        PluginCommand::RegisterForFunction("Fix Obfuscation 123", ":oof:", &FixObfuscationTask);
+        PluginCommand::RegisterForFunction("Fix Obfuscation 123", ":oof:", &FixObfuscationBackgroundTask);
+        PluginCommand::RegisterForFunction("Fix Obfuscation 456", ":oof:", &FixObfuscationTask);
 
         BinjaLog(InfoLog, "Loaded ObfuArchitectureHook");
 
