@@ -41,7 +41,8 @@ find_library(BINJA_CORE_LIBRARY binaryninjacore
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE
     include
     vendor/binaryninja-api
-    vendor/fmt/include)
+    vendor/fmt/include
+    vendor/json/include)
 
 target_link_libraries(${PROJECT_NAME}
     ${BINJA_CORE_LIBRARY} binaryninjaapi fmt)
