@@ -152,7 +152,10 @@ namespace PatchBuilder
         db.ZlibCompress(db);
         b = std::vector<uint8_t>{ &db[0], &db[db.GetLength()] };
 
-        Ref<Metadata> patches = new Metadata(b);
+        Ref<Metadata> patches = new Metadata({
+            { "version", new Metadata(METADATA_VERSION) },
+            { "data", new Metadata(b) }
+        });
 
         view.StoreMetadata(METADATA_KEY, patches);
     }
@@ -161,15 +164,20 @@ namespace PatchBuilder
     {
         Ref<Metadata> patches = view.QueryMetadata(METADATA_KEY);
 
-        if (patches && patches->IsRaw())
+        if (patches && patches->IsKeyValueStore())
         {
-            Buffer b = patches->GetRaw();
+            std::map<std::string, Ref<Metadata>> data = patches->GetKeyValueStore();
 
-            DataBuffer db(b.data(), b.size());
-            db.ZlibDecompress(db);
-            b = std::vector<uint8_t>{ &db[0], &db[db.GetLength()] };
+            if (data.at("version")->GetString() == METADATA_VERSION)
+            {
+                Buffer b = data.at("data")->GetRaw();
 
-            quickDeserialization<InputAdapter>({ b.begin(), b.end() }, m_Patches);
+                DataBuffer db(b.data(), b.size());
+                db.ZlibDecompress(db);
+                b = std::vector<uint8_t>{ &db[0], &db[db.GetLength()] };
+
+                quickDeserialization<InputAdapter>({ b.begin(), b.end() }, m_Patches);
+            }
         }
     }
 
