@@ -20,3 +20,8 @@
 void LabelIndirectBranches(
     BinaryView* view,
     Function* func);
+
+void FixObfuscation(
+    BackgroundTask* task,
+    BinaryView* view,
+    Function* func);

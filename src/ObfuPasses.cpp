@@ -16,8 +16,88 @@
 #include "ObfuPasses.h"
 #include "MLIL_SSA.h"
 #include "MLIL.h"
+#include "PatchBuilder.h"
 
 #include "fmt/format.h"
+
+bool CheckTailXrefs(BinaryView* view, Function* func, Function* tail)
+{
+    std::set<Ref<Function>> funcs;
+
+    for (const ReferenceSource& source : view->GetCodeReferences(tail->GetStart()))
+    {
+        if (source.func)
+        {
+            funcs.emplace(source.func);
+        }
+    }
+
+    if (funcs.find(func) != funcs.end())
+    {
+        funcs.erase(func);
+    }
+
+    return funcs.size() == 0;
+}
+
+size_t FixTails(BinaryView* view, Function* func)
+{
+    size_t total = 0;
+
+    Ref<LowLevelILFunction> llil = func->GetLowLevelIL();
+
+    for (Ref<BasicBlock> block : llil->GetBasicBlocks())
+    {
+        if (block->GetLength() > 1)
+        {
+            LowLevelILInstruction last = llil->GetInstruction(block->GetEnd() - 1);
+
+            Ref<Function> tail;
+
+            if (last.operation == LLIL_TAILCALL || last.operation == LLIL_JUMP)
+            {
+                LowLevelILInstruction dest = last.GetDestExpr();
+
+                PossibleValueSet branchSet = dest.GetPossibleValues();
+
+                if (branchSet.state == ConstantValue || branchSet.state == ConstantPointerValue)
+                {
+                    tail = view->GetAnalysisFunction(func->GetPlatform(), branchSet.value);
+                }
+            }
+            else
+            {
+                continue;
+            }
+
+            if (!tail)
+            {
+                continue;
+            }
+
+            if (tail.GetPtr() == func)
+            {
+                continue;
+            }
+
+            if (!tail->WasAutomaticallyDiscovered())
+            {
+                continue;
+            }
+
+            if (!CheckTailXrefs(view, func, tail))
+            {
+                continue;
+            }
+
+            view->RemoveUserFunction(tail);
+
+            ++total;
+        }
+    }
+
+    return total;
+}
 
 void LabelIndirectBranches(
     BinaryView* view,
@@ -66,4 +146,38 @@ void LabelIndirectBranches(
             }
         }
     }
+}
+
+void FixObfuscation(
+    BackgroundTask* task,
+    BinaryView* view,
+    Function* func)
+{
+    for (size_t i = 0; i < 100; ++i)
+    {
+        if (task)
+        {
+            task->SetProgressText(fmt::format("Deobfuscating {0}, Pass {1}", func->GetSymbol()->GetShortName(), i));
+        }
+
+        if (FixTails(view, func))
+        {
+            func->Reanalyze();
+
+            view->UpdateAnalysisAndWait();
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    if (task)
+    {
+        task->SetProgressText(fmt::format("Deobfuscating {0}, Post-Analysis", func->GetSymbol()->GetShortName()));
+    }
+
+    LabelIndirectBranches(view, func);
+
+    PatchBuilder::SavePatches(*view);
 }
