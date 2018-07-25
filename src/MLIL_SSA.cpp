@@ -104,7 +104,7 @@ bool MLIL_SSA_SolveBranchDependence(
             out_false_val = lhs;
         }
 
-        return true;
+        return MLIL_SSA_TraceVar(func, out_true_val) && MLIL_SSA_TraceVar(func, out_false_val);
     }
 
     return false;

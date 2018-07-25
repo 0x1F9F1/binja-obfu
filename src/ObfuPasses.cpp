@@ -15,36 +15,54 @@
 
 #include "ObfuPasses.h"
 #include "MLIL_SSA.h"
+#include "MLIL.h"
+
+#include "fmt/format.h"
 
 void LabelIndirectBranches(
     BinaryView* view,
     Function* func)
 {
-    Ref<MediumLevelILFunction> mlil = func->GetMediumLevelIL()->GetSSAForm();
+    Ref<MediumLevelILFunction> mlil_ssa = func->GetMediumLevelIL()->GetSSAForm();
+    Ref<Architecture> arch = func->GetArchitecture();
 
     MediumLevelILInstruction branch;
     MediumLevelILInstruction condition;
     MediumLevelILInstruction true_val;
     MediumLevelILInstruction false_val;
 
-    for (auto block : mlil->GetBasicBlocks())
+    for (Ref<BasicBlock>& block : mlil_ssa->GetBasicBlocks())
     {
         if (block->GetLength() > 1)
         {
-            auto last = mlil->GetInstruction(block->GetEnd() - 1);
+            MediumLevelILInstruction last = mlil_ssa->GetInstruction(block->GetEnd() - 1);
 
-            if (MLIL_SSA_GetIndirectBranchCondition(*mlil, last, branch, condition, true_val, false_val))
+            if (MLIL_SSA_GetIndirectBranchCondition(*mlil_ssa, last, branch, condition, true_val, false_val))
             {
                 branch = branch.GetNonSSAForm();
                 condition = condition.GetNonSSAForm();
                 true_val = true_val.GetNonSSAForm();
                 false_val = false_val.GetNonSSAForm();
 
-                char buffer[256];
+                func->SetCommentForAddress(last.address, fmt::format("{0} @ {1:x}  if ({2}) then {3} else {4}",
+                    condition.instructionIndex,
+                    condition.address,
+                    MLIL_ToString(condition),
+                    MLIL_ToString(true_val),
+                    MLIL_ToString(false_val)));
 
-                snprintf(buffer, 256, "%zu @ 0x%zX", condition.instructionIndex, condition.address);
+                func->SetUserInstructionHighlight(arch, last.address, BlueHighlightColor);
+                func->SetUserInstructionHighlight(arch, condition.address, OrangeHighlightColor);
 
-                func->SetCommentForAddress(last.address, buffer);
+                if (true_val.operation == MLIL_CONST)
+                {
+                    func->SetUserInstructionHighlight(arch, true_val.As<MLIL_CONST>().GetConstant(), GreenHighlightColor);
+                }
+
+                if (false_val.operation == MLIL_CONST)
+                {
+                    func->SetUserInstructionHighlight(arch, false_val.As<MLIL_CONST>().GetConstant(), RedHighlightColor);
+                }
             }
         }
     }
