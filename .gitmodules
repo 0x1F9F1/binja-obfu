@@ -2,3 +2,6 @@
 	path = vendor/binaryninja-api
 	url = git@github.com:Vector35/binaryninja-api.git
 	branch = dev
+[submodule "vendor/fmt"]
+	path = vendor/fmt
+	url = git@github.com:fmtlib/fmt.git
