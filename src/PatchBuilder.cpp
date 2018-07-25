@@ -111,6 +111,13 @@ namespace PatchBuilder
                     size_t operand_count = operands.back();
                     operands.pop_back();
 
+                    size_t expected_operand_count = LowLevelILInstruction::operationOperandUsage.at(operation).size();
+
+                    if (expected_operand_count != operand_count)
+                    {
+                        LogError("Mismatched operand count (expected %zu, got %zu)", expected_operand_count, operand_count);
+                    }
+
                     if (operands.size() < operand_count)
                     {
                         LogError("Missing Exprs (expected %zu, got %zu)", operand_count, operands.size());

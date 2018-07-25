@@ -37,14 +37,14 @@ void LabelIndirectBranches(
         {
             MediumLevelILInstruction last = mlil_ssa->GetInstruction(block->GetEnd() - 1);
 
-            if (MLIL_SSA_GetIndirectBranchCondition(*mlil_ssa, last, branch, condition, true_val, false_val))
+            if (MLIL_SSA_GetIndirectBranchCondition(last, branch, condition, true_val, false_val))
             {
                 branch = branch.GetNonSSAForm();
                 condition = condition.GetNonSSAForm();
                 true_val = true_val.GetNonSSAForm();
                 false_val = false_val.GetNonSSAForm();
 
-                func->SetCommentForAddress(last.address, fmt::format("{0} @ {1:x}  if ({2}) then {3} else {4}",
+                func->SetCommentForAddress(last.address, fmt::format("# {0} @ {1:x}  if ({2}) then {3} else {4}",
                     condition.instructionIndex,
                     condition.address,
                     MLIL_ToString(condition),

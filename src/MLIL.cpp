@@ -15,7 +15,9 @@
 
 #include "MLIL.h"
 
-bool MLIL_GetInstructionTokens(MediumLevelILInstruction& insn, std::vector<InstructionTextToken>& tokens)
+bool MLIL_GetInstructionTokens(
+    MediumLevelILInstruction& insn,
+    std::vector<InstructionTextToken>& tokens)
 {
     Ref<Function> sourceFunction = insn.function->GetFunction();
     Ref<Architecture> arch = insn.function->GetArchitecture();
@@ -32,7 +34,8 @@ bool MLIL_GetInstructionTokens(MediumLevelILInstruction& insn, std::vector<Instr
     }
 }
 
-std::string MLIL_ToString(MediumLevelILInstruction& insn)
+std::string MLIL_ToString(
+    MediumLevelILInstruction& insn)
 {
     std::vector<InstructionTextToken> tokens;
 

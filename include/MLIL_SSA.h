@@ -18,7 +18,6 @@
 #include "BinaryNinja.h"
 
 bool MLIL_SSA_TraceVar(
-    MediumLevelILFunction& func,
     MediumLevelILInstruction& var);
 
 std::vector<MediumLevelILInstruction> MLIL_SSA_GetVarDefinitions(
@@ -26,7 +25,6 @@ std::vector<MediumLevelILInstruction> MLIL_SSA_GetVarDefinitions(
     const MediumLevelILSSAVariableList& vars);
 
 bool MLIL_SSA_SolveBranchDependence(
-    MediumLevelILFunction& func,
     MediumLevelILInstruction& lhs,
     MediumLevelILInstruction& rhs,
     MediumLevelILInstruction& out_branch,
@@ -34,7 +32,6 @@ bool MLIL_SSA_SolveBranchDependence(
     MediumLevelILInstruction& out_false_val);
 
 bool MLIL_SSA_GetConditionalMoveSource(
-    MediumLevelILFunction& func,
     MediumLevelILInstruction& var,
     MediumLevelILInstruction& out_branch,
     MediumLevelILInstruction& out_condition,
@@ -42,7 +39,6 @@ bool MLIL_SSA_GetConditionalMoveSource(
     MediumLevelILInstruction& out_false_val);
 
 bool MLIL_SSA_GetIndirectBranchCondition(
-    MediumLevelILFunction& func,
     MediumLevelILInstruction& branch,
     MediumLevelILInstruction& out_branch,
     MediumLevelILInstruction& out_condition,

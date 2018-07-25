@@ -16,21 +16,20 @@
 #include "MLIL_SSA.h"
 
 bool MLIL_SSA_TraceVar(
-    MediumLevelILFunction& func,
     MediumLevelILInstruction& var)
 {
     for (size_t i = 0; i < 100; ++i)
     {
         if (var.operation == MLIL_VAR_SSA)
         {
-            size_t idx = func.GetSSAVarDefinition(var.As<MLIL_VAR_SSA>().GetSourceSSAVariable());
+            size_t idx = var.function->GetSSAVarDefinition(var.As<MLIL_VAR_SSA>().GetSourceSSAVariable());
 
-            if (idx > func.GetInstructionCount())
+            if (idx > var.function->GetInstructionCount())
             {
                 return true;
             }
 
-            var = func.GetInstruction(idx);
+            var = var.function->GetInstruction(idx);
         }
         else if (var.operation == MLIL_SET_VAR_SSA)
         {
@@ -62,13 +61,17 @@ std::vector<MediumLevelILInstruction> MLIL_SSA_GetVarDefinitions(
 }
 
 bool MLIL_SSA_SolveBranchDependence(
-    MediumLevelILFunction& func,
     MediumLevelILInstruction& lhs,
     MediumLevelILInstruction& rhs,
     MediumLevelILInstruction& out_branch,
     MediumLevelILInstruction& out_true_val,
     MediumLevelILInstruction& out_false_val)
 {
+    if (lhs.function != rhs.function)
+    {
+        return false;
+    }
+
     std::unordered_map<size_t, BNILBranchDependence> lhs_branches = lhs.GetAllBranchDependence();
     std::unordered_map<size_t, BNILBranchDependence> rhs_branches = rhs.GetAllBranchDependence();
 
@@ -86,7 +89,7 @@ bool MLIL_SSA_SolveBranchDependence(
             continue;
         }
 
-        out_branch = func.GetInstruction(lhs_branch.first);
+        out_branch = lhs.function->GetInstruction(lhs_branch.first);
 
         if (out_branch.operation != MLIL_IF)
         {
@@ -104,14 +107,13 @@ bool MLIL_SSA_SolveBranchDependence(
             out_false_val = lhs;
         }
 
-        return MLIL_SSA_TraceVar(func, out_true_val) && MLIL_SSA_TraceVar(func, out_false_val);
+        return MLIL_SSA_TraceVar(out_true_val) && MLIL_SSA_TraceVar(out_false_val);
     }
 
     return false;
 }
 
 bool MLIL_SSA_GetConditionalMoveSource(
-    MediumLevelILFunction& func,
     MediumLevelILInstruction& var,
     MediumLevelILInstruction& out_branch,
     MediumLevelILInstruction& out_condition,
@@ -130,7 +132,7 @@ bool MLIL_SSA_GetConditionalMoveSource(
         return false;
     }
 
-    std::vector<MediumLevelILInstruction> vars = MLIL_SSA_GetVarDefinitions(func, sources);
+    std::vector<MediumLevelILInstruction> vars = MLIL_SSA_GetVarDefinitions(*var.function, sources);
 
     if (vars.size() != 2)
     {
@@ -145,7 +147,7 @@ bool MLIL_SSA_GetConditionalMoveSource(
         }
     }
 
-    if (!MLIL_SSA_SolveBranchDependence(func, vars[0], vars[1], out_branch, out_true_val, out_false_val))
+    if (!MLIL_SSA_SolveBranchDependence(vars[0], vars[1], out_branch, out_true_val, out_false_val))
     {
         return false;
     }
@@ -157,7 +159,7 @@ bool MLIL_SSA_GetConditionalMoveSource(
 
     out_condition = out_branch.As<MLIL_IF>().GetConditionExpr();
 
-    if (!MLIL_SSA_TraceVar(func, out_condition))
+    if (!MLIL_SSA_TraceVar(out_condition))
     {
         return false;
     }
@@ -166,7 +168,6 @@ bool MLIL_SSA_GetConditionalMoveSource(
 }
 
 bool MLIL_SSA_GetIndirectBranchCondition(
-    MediumLevelILFunction& func,
     MediumLevelILInstruction& branch,
     MediumLevelILInstruction& out_branch,
     MediumLevelILInstruction& out_condition,
@@ -191,10 +192,10 @@ bool MLIL_SSA_GetIndirectBranchCondition(
         return false;
     }
 
-    if (!MLIL_SSA_TraceVar(func, dest))
+    if (!MLIL_SSA_TraceVar(dest))
     {
         return false;
     }
 
-    return MLIL_SSA_GetConditionalMoveSource(func, dest, out_branch, out_condition, out_true_val, out_false_val);
+    return MLIL_SSA_GetConditionalMoveSource(dest, out_branch, out_condition, out_true_val, out_false_val);
 }
