@@ -163,6 +163,118 @@ bool AreValuesExecutable(BinaryView& view, const PossibleValueSet& values)
     return false;
 }
 
+size_t FixStack(BinaryView* view, Function* func)
+{
+    size_t total = 0;
+
+    Ref<LowLevelILFunction> llil = func->GetLowLevelIL();
+
+    const uint32_t stack_register = llil->GetArchitecture()->GetStackPointerRegister();
+    const size_t address_size = view->GetAddressSize();
+
+    for (Ref<BasicBlock> block : llil->GetBasicBlocks())
+    {
+        for (size_t i = block->GetStart(); i < block->GetEnd(); ++i)
+        {
+            LowLevelILInstruction insn = llil->GetInstruction(i);
+
+            if (insn.operation != LLIL_SET_REG)
+            {
+                continue;
+            }
+
+            LowLevelILInstruction src = insn.As<LLIL_SET_REG>().GetSourceExpr();
+
+            if (src.operation != LLIL_POP)
+            {
+                continue;
+            }
+
+            RegisterValue stack_register_value_before = insn.GetRegisterValue(stack_register);
+
+            if (stack_register_value_before.state != StackFrameOffset)
+            {
+                continue;
+            }
+
+            RegisterValue stack_register_value_after;
+            stack_register_value_after.state = StackFrameOffset;
+            stack_register_value_after.value = stack_register_value_before.value + address_size;
+
+            uint32_t dest_register = insn.As<LLIL_SET_REG>().GetDestRegister();
+
+            if (LLIL_REG_IS_TEMP(dest_register))
+            {
+                continue;
+            }
+
+            RegisterValue dest_register_value_after = insn.GetRegisterValueAfter(dest_register);
+
+            if (dest_register_value_after.state != StackFrameOffset)
+            {
+                continue;
+            }
+
+            std::vector<PatchBuilder::Token> patches;
+
+            patches.insert(patches.end(), std::initializer_list<PatchBuilder::Token> {
+                        { PatchBuilder::TokenType::Operand, stack_register },
+                                { PatchBuilder::TokenType::Operand, stack_register },
+                            { PatchBuilder::TokenType::Operand, 1 }, // Operand Count
+                            { PatchBuilder::TokenType::Operand, 0 }, // Flags
+                            { PatchBuilder::TokenType::Operand, address_size }, // Operand Size
+                            { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_REG },
+                        { PatchBuilder::TokenType::Operand, static_cast<size_t>(stack_register_value_after.value - stack_register_value_before.value) },
+                        { PatchBuilder::TokenType::Operand, 1 }, // Operand Count
+                        { PatchBuilder::TokenType::Operand, 0 }, // Flags
+                        { PatchBuilder::TokenType::Operand, address_size }, // Operand Size
+                        { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_CONST },
+                    { PatchBuilder::TokenType::Operand, 2 }, // Operand Count
+                    { PatchBuilder::TokenType::Operand, 0 }, // Flags
+                    { PatchBuilder::TokenType::Operand, address_size }, // Operand Size
+                    { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_ADD },
+                { PatchBuilder::TokenType::Operand, 2 }, // Operand Count
+                { PatchBuilder::TokenType::Operand, 0 }, // Flags
+                { PatchBuilder::TokenType::Operand, address_size }, // Operand Size
+                { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_SET_REG },
+            });
+
+            patches.insert(patches.end(), std::initializer_list<PatchBuilder::Token> {
+                        { PatchBuilder::TokenType::Operand, dest_register },
+                                { PatchBuilder::TokenType::Operand, stack_register },
+                            { PatchBuilder::TokenType::Operand, 1 }, // Operand Count
+                            { PatchBuilder::TokenType::Operand, 0 }, // Flags
+                            { PatchBuilder::TokenType::Operand, address_size }, // Operand Size
+                            { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_REG },
+                        { PatchBuilder::TokenType::Operand, static_cast<size_t>(dest_register_value_after.value - stack_register_value_after.value) },
+                        { PatchBuilder::TokenType::Operand, 1 }, // Operand Count
+                        { PatchBuilder::TokenType::Operand, 0 }, // Flags
+                        { PatchBuilder::TokenType::Operand, address_size }, // Operand Size
+                        { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_CONST },
+                    { PatchBuilder::TokenType::Operand, 2 }, // Operand Count
+                    { PatchBuilder::TokenType::Operand, 0 }, // Flags
+                    { PatchBuilder::TokenType::Operand, address_size }, // Operand Size
+                    { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_ADD },
+                { PatchBuilder::TokenType::Operand, 2 }, // Operand Count
+                { PatchBuilder::TokenType::Operand, 0 }, // Flags
+                { PatchBuilder::TokenType::Operand, address_size }, // Operand Size
+                { PatchBuilder::TokenType::Instruction, BNLowLevelILOperation::LLIL_SET_REG },
+            });
+
+            if (!patches.empty())
+            {
+                PatchBuilder::AddPatch(*view, insn.address, PatchBuilder::Patch{
+                    view->GetInstructionLength(insn.function->GetArchitecture(), insn.address), patches
+                });
+
+                total += 1;
+            }
+        }
+    }
+
+    return total;
+}
+
 size_t FixJumps(BinaryView* view, Function* func)
 {
     size_t total = 0;
@@ -421,7 +533,8 @@ void FixObfuscation(
         }
 
         if (FixTails(view, func) ||
-            FixJumps(view, func))
+            FixJumps(view, func) ||
+            FixStack(view, func))
         {
             // Beep Boop
         }
