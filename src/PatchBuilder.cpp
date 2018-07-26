@@ -16,16 +16,18 @@
 #include "PatchBuilder.h"
 #include "BinaryViewAssociatedDataStore.h"
 
-#include <unordered_map>
+#include "DataBufferAdapter.h"
 
-static const std::string METADATA_KEY = "OBFU_PATCHES";
-static const std::string METADATA_VERSION = "0.0.0";
+#include <unordered_map>
+#include <mutex>
 
 #include <bitsery/bitsery.h>
-#include <bitsery/adapter/buffer.h>
 #include <bitsery/traits/vector.h>
 #include <bitsery/flexible.h>
 #include <bitsery/flexible/unordered_map.h>
+
+static const std::string PATCH_METADATA_KEY = "OBFU_PATCHES";
+static const std::string PATCH_METADATA_VERSION = "0.0.0";
 
 namespace PatchBuilder
 {
@@ -64,7 +66,7 @@ namespace PatchBuilder
     void AddPatch(BinaryView& view, uintptr_t address, Patch patch)
     {
         PatchCollection* patches = GetPatchCollection(view.m_object);
-        
+
         patches->AddPatch(address, std::move(patch));
     }
 
@@ -92,6 +94,13 @@ namespace PatchBuilder
         }
 
         return patches->GetPatch(address);
+    }
+
+    void LoadPatches(BinaryView & view)
+    {
+        PatchCollection* patches = GetPatchCollection(view.m_object);
+
+        patches->Load(view);
     }
 
     void SavePatches(BinaryView & view)
@@ -122,61 +131,70 @@ namespace PatchBuilder
         return nullptr;
     }
 
-    using namespace bitsery;
-
-    using Buffer = std::vector<uint8_t>;
-    using OutputAdapter = OutputBufferAdapter<Buffer>;
-    using InputAdapter = InputBufferAdapter<Buffer>;
-
-    template <typename S>
-    void serialize(S& s, Token& o)
-    {
-        s.value1b(reinterpret_cast<std::underlying_type_t<TokenType>&>(o.Type));
-        s.value8b(o.Value);
-    };
-
-    template <typename S>
-    void serialize(S& s, Patch& o)
-    {
-        s.value8b(o.Size);
-        s.container(o.Tokens, 4096);
-    };
-
     void PatchCollection::Save(BinaryView& view)
     {
-        Buffer b;
+        DataBuffer db;
 
-        quickSerialization<OutputAdapter>(b, m_Patches);
+        if (bitsery::quickSerialization<OutputDataBufferAdapater>(db, m_Patches))
+        {
+            BinjaLog(ErrorLog, "Save Size Before: {0}", db.GetLength());
 
-        DataBuffer db(b.data(), b.size());
-        db.ZlibCompress(db);
-        b = std::vector<uint8_t>{ &db[0], &db[db.GetLength()] };
+            if (db.ZlibCompress(db))
+            {
+                BinjaLog(ErrorLog, "Save Size After: {0}", db.GetLength());
 
-        Ref<Metadata> patches = new Metadata({
-            { "version", new Metadata(METADATA_VERSION) },
-            { "data", new Metadata(b) }
-        });
+                Ref<Metadata> patches = new Metadata
+                ({
+                    { "version", new Metadata(PATCH_METADATA_VERSION) },
+                    { "data", new Metadata(db) }
+                });
 
-        view.StoreMetadata(METADATA_KEY, patches);
+                view.StoreMetadata(PATCH_METADATA_KEY, patches);
+            }
+            else
+            {
+                BinjaLog(ErrorLog, "Failed to compress patch data for {0}", view.GetFile()->GetFilename());
+            }
+        }
+        else
+        {
+            BinjaLog(ErrorLog, "Failed to serialize patch data for {0}", view.GetFile()->GetFilename());
+        }
     }
 
     void PatchCollection::Load(BinaryView& view)
     {
-        Ref<Metadata> patches = view.QueryMetadata(METADATA_KEY);
+        m_Patches.clear();
+
+        Ref<Metadata> patches = view.QueryMetadata(PATCH_METADATA_KEY);
 
         if (patches && patches->IsKeyValueStore())
         {
             std::map<std::string, Ref<Metadata>> data = patches->GetKeyValueStore();
 
-            if (data.at("version")->GetString() == METADATA_VERSION)
+            if (data.at("version")->GetString() == PATCH_METADATA_VERSION)
             {
-                Buffer b = data.at("data")->GetRaw();
+                DataBuffer db = data.at("data")->GetRawBuffer();
 
-                DataBuffer db(b.data(), b.size());
-                db.ZlibDecompress(db);
-                b = std::vector<uint8_t>{ &db[0], &db[db.GetLength()] };
+                BinjaLog(ErrorLog, "Load Size Before: {0}", db.GetLength());
 
-                quickDeserialization<InputAdapter>({ b.begin(), b.end() }, m_Patches);
+                if (db.ZlibDecompress(db))
+                {
+                    BinjaLog(ErrorLog, "Load Size After: {0}", db.GetLength());
+
+                    if (bitsery::quickDeserialization<InputDataBufferAdapater>({ db }, m_Patches).second || true)
+                    {
+                        BinjaLog(InfoLog, "Successfully loaded patch data for {0}", view.GetFile()->GetFilename());
+                    }
+                    else
+                    {
+                        BinjaLog(ErrorLog, "Failed to deserialize patch data for {0}", view.GetFile()->GetFilename());
+                    }
+                }
+                else
+                {
+                    BinjaLog(ErrorLog, "Failed to decompress patch data for {0}", view.GetFile()->GetFilename());
+                }
             }
         }
     }

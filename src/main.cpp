@@ -39,6 +39,11 @@ void FixObfuscationTask(BinaryView* view, Function* func)
     FixObfuscation(nullptr, view, func, false);
 }
 
+void LoadPatchesTask(BinaryView* view)
+{
+    PatchBuilder::LoadPatches(*view);
+}
+
 void SavePatchesTask(BinaryView* view)
 {
     PatchBuilder::SavePatches(*view);
@@ -55,6 +60,7 @@ extern "C"
 
         PluginCommand::RegisterForFunction("Fix Obfuscation 123", ":oof:", &FixObfuscationBackgroundTask);
         PluginCommand::RegisterForFunction("Fix Obfuscation 456", ":oof:", &FixObfuscationTask);
+        PluginCommand::Register("Load Patches", ":oof:", &LoadPatchesTask);
         PluginCommand::Register("Save Patches", ":oof:", &SavePatchesTask);
 
         BinjaLog(InfoLog, "Loaded ObfuArchitectureHook");

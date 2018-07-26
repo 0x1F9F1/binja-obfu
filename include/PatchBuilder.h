@@ -18,7 +18,6 @@
 #include "BinaryNinja.h"
 
 #include <vector>
-#include <mutex>
 
 namespace PatchBuilder
 {
@@ -32,6 +31,13 @@ namespace PatchBuilder
     {
         TokenType Type;
         size_t Value;
+
+        template <typename S>
+        void serialize(S& s)
+        {
+            s.value1b(Type);
+            s.value8b(Value);
+        }
     };
 
     struct Patch
@@ -39,11 +45,19 @@ namespace PatchBuilder
         size_t Size;
         std::vector<Token> Tokens;
 
+        template <typename S>
+        void serialize(S& s)
+        {
+            s.value8b(Size);
+            s.container(Tokens, 4096);
+        };
+
         bool Evaluate(LowLevelILFunction& il) const;
     };
 
     void AddPatch(BinaryView& view, uintptr_t address, Patch patch);
     const Patch* GetPatch(LowLevelILFunction& il, uintptr_t address);
 
+    void LoadPatches(BinaryView& view);
     void SavePatches(BinaryView& view);
 }
