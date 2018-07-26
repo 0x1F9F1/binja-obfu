@@ -502,7 +502,6 @@ void LabelPossibleTails(BinaryView* view, Function* func)
     }
 }
 
-
 void FixObfuscation(
     BackgroundTask* task,
     BinaryView* view,
@@ -517,10 +516,19 @@ void FixObfuscation(
     {
         if (task)
         {
+            if (task->IsCancelled())
+            {
+                return;
+            }
+
             task->SetProgressText(fmt::format("Deobfuscating {0}, Pass {1} Pending", func_name, passes));
         }
 
         func->Reanalyze();
+
+        // Not really sure if this even helps. Tried so many different ways and nothing seems to prioritize the function.
+        AdvancedFunctionAnalysisDataRequestor priority(func);
+
         view->UpdateAnalysis();
 
         while (func->NeedsUpdate())
