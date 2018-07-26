@@ -137,12 +137,8 @@ namespace PatchBuilder
 
         if (bitsery::quickSerialization<OutputDataBufferAdapater>(db, m_Patches))
         {
-            BinjaLog(ErrorLog, "Save Size Before: {0}", db.GetLength());
-
             if (db.ZlibCompress(db))
             {
-                BinjaLog(ErrorLog, "Save Size After: {0}", db.GetLength());
-
                 Ref<Metadata> patches = new Metadata
                 ({
                     { "version", new Metadata(PATCH_METADATA_VERSION) },
@@ -176,13 +172,9 @@ namespace PatchBuilder
             {
                 DataBuffer db = data.at("data")->GetRawBuffer();
 
-                BinjaLog(ErrorLog, "Load Size Before: {0}", db.GetLength());
-
                 if (db.ZlibDecompress(db))
                 {
-                    BinjaLog(ErrorLog, "Load Size After: {0}", db.GetLength());
-
-                    if (bitsery::quickDeserialization<InputDataBufferAdapater>({ db }, m_Patches).second || true)
+                    if (bitsery::quickDeserialization<InputDataBufferAdapater>({ db }, m_Patches).first == bitsery::ReaderError::NoError)
                     {
                         BinjaLog(InfoLog, "Successfully loaded patch data for {0}", view.GetFile()->GetFilename());
                     }
