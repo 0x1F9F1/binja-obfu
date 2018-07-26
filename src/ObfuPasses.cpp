@@ -502,6 +502,15 @@ void LabelPossibleTails(BinaryView* view, Function* func)
     }
 }
 
+bool FixObfuscationPass(
+    BinaryView* view,
+    Function* func)
+{
+    return FixTails(view, func)
+        || FixJumps(view, func)
+        || FixStack(view, func);
+}
+
 void FixObfuscation(
     BackgroundTask* task,
     BinaryView* view,
@@ -541,9 +550,7 @@ void FixObfuscation(
             task->SetProgressText(fmt::format("Deobfuscating {0}, Pass {1} Analyzing", func_name, passes));
         }
 
-        if (FixTails(view, func) ||
-            FixJumps(view, func) ||
-            FixStack(view, func))
+        if (FixObfuscationPass(view, func))
         {
             // Beep Boop
         }
