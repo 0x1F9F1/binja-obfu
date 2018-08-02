@@ -63,7 +63,7 @@ extern "C"
         PluginCommand::Register("Load Patches", ":oof:", &LoadPatchesTask);
         PluginCommand::Register("Save Patches", ":oof:", &SavePatchesTask);
 
-        BinjaLog(InfoLog, "Loaded ObfuArchitectureHook");
+        BinjaLog(InfoLog, "Loaded binja-obfu");
 
         return true;
     }

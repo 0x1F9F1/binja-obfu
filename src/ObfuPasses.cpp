@@ -475,7 +475,6 @@ void LabelIndirectBranches(
 void LabelPossibleTails(BinaryView* view, Function* func)
 {
     Ref<Architecture> arch = func->GetArchitecture();
-
     Ref<LowLevelILFunction> llil = func->GetLowLevelIL();
 
     const uint32_t stack_register = arch->GetStackPointerRegister();
@@ -502,6 +501,39 @@ void LabelPossibleTails(BinaryView* view, Function* func)
     }
 }
 
+void LabelNonLinearCalls(BinaryView* view, Function* func)
+{
+    Ref<Architecture> arch = func->GetArchitecture();
+    Ref<LowLevelILFunction> llil = func->GetLowLevelIL();
+
+    const uint64_t lower_limit = func->GetStart();
+    const uint64_t upper_limit = lower_limit + (llil->GetInstructionCount() * 5);
+
+    for (Ref<BasicBlock> block : llil->GetBasicBlocks())
+    {
+        for (size_t i = block->GetStart(); i < block->GetEnd(); ++i)
+        {
+            LowLevelILInstruction insn = llil->GetInstruction(i);
+        
+            if (insn.operation == LLIL_CALL || insn.operation == LLIL_CALL_STACK_ADJUST)
+            {
+                LowLevelILInstruction dest = insn.GetDestExpr();
+
+                if (dest.operation == LLIL_CONST || dest.operation == LLIL_CONST_PTR)
+                {
+                    if ((insn.address < lower_limit) || (insn.address > upper_limit))
+                    {
+                        if (func->GetInstructionHighlight(arch, insn.address).alpha == 0)
+                        {
+                            func->SetUserInstructionHighlight(arch, insn.address, CyanHighlightColor);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 bool FixObfuscationPass(
     BinaryView* view,
     Function* func)
@@ -521,6 +553,9 @@ void FixObfuscation(
 
     std::string func_name = func->GetSymbol()->GetShortName();
 
+    // Not really sure if this even helps. Tried so many different ways and nothing seems to prioritize the function.
+    AdvancedFunctionAnalysisDataRequestor priority(func);
+
     for (; passes < 100; ++passes)
     {
         if (task)
@@ -534,10 +569,6 @@ void FixObfuscation(
         }
 
         func->Reanalyze();
-
-        // Not really sure if this even helps. Tried so many different ways and nothing seems to prioritize the function.
-        AdvancedFunctionAnalysisDataRequestor priority(func);
-
         view->UpdateAnalysis();
 
         while (func->NeedsUpdate())
@@ -567,6 +598,7 @@ void FixObfuscation(
 
     LabelIndirectBranches(view, func);
     LabelPossibleTails(view, func);
+    LabelNonLinearCalls(view, func);
 
     if (auto_save)
     {

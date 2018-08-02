@@ -188,6 +188,10 @@ namespace PatchBuilder
                     BinjaLog(ErrorLog, "Failed to decompress patch data for {0}", view.GetFile()->GetFilename());
                 }
             }
+            else
+            {
+                BinjaLog(ErrorLog, "Outdated or invalid patch data for {0}", view.GetFile()->GetFilename());
+            }
         }
     }
 
