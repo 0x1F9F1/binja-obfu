@@ -45,8 +45,9 @@ class OutputDataBufferAdapater
 {
 protected:
     DataBuffer * buffer_;
-    std::array<uint8_t, 4096> local_buffer_;
-    size_t local_size_;
+    size_t current_size_;
+
+    size_t calculate_growth(const size_t new_size) const;
 
 public:
     using TValue = uint8_t;

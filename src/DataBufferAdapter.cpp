@@ -53,41 +53,45 @@ bool InputDataBufferAdapater::isCompletedSuccessfully() const
     return (error_ == bitsery::ReaderError::NoError) && (offset_ == buffer_->GetLength());
 }
 
+size_t OutputDataBufferAdapater::calculate_growth(const size_t new_size) const
+{
+    const size_t old_capacity = buffer_->GetLength();
+    const size_t new_capacity = old_capacity + old_capacity / 2;
+
+    if (new_capacity < new_size)
+	{
+	    return new_size;
+	}
+
+    return new_capacity;
+}
+
 OutputDataBufferAdapater::OutputDataBufferAdapater(DataBuffer& buffer)
     : buffer_(std::addressof(buffer))
-    , local_size_(0)
+    , current_size_(buffer_->GetLength())
 { }
 
 void OutputDataBufferAdapater::write(const uint8_t *data, const size_t size)
 {
-    if ((size + local_size_) > local_buffer_.size())
+    const size_t new_size = size + current_size_;
+
+    if (new_size > buffer_->GetLength())
     {
-        flush();
+        const size_t new_capacity = calculate_growth(new_size);
+
+        buffer_->SetSize(new_capacity);
     }
 
-    if (size < local_buffer_.size())
-    {
-        std::memcpy(&local_buffer_[local_size_], data, size);
+    std::memcpy(buffer_->GetDataAt(current_size_), data, size);
 
-        local_size_ += size;
-    }
-    else
-    {
-        buffer_->Append(data, size);
-    }
+    current_size_ = new_size;
 }
 
 void OutputDataBufferAdapater::flush()
 {
-    if (local_size_)
-    {
-        buffer_->Append(local_buffer_.data(), local_size_);
-
-        local_size_ = 0;
-    }
 }
 
 size_t OutputDataBufferAdapater::writtenBytesCount() const
 {
-    return buffer_->GetLength();
+    return current_size_;
 }
