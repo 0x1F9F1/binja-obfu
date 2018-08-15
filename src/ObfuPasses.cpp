@@ -514,7 +514,7 @@ void LabelNonLinearCalls(BinaryView* view, Function* func)
         for (size_t i = block->GetStart(); i < block->GetEnd(); ++i)
         {
             LowLevelILInstruction insn = llil->GetInstruction(i);
-        
+
             if (insn.operation == LLIL_CALL || insn.operation == LLIL_CALL_STACK_ADJUST)
             {
                 LowLevelILInstruction dest = insn.GetDestExpr();
@@ -544,17 +544,18 @@ bool FixObfuscationPass(
 }
 
 void FixObfuscation(
-    BackgroundTask* task,
-    BinaryView* view,
-    Function* func,
+    Ref<BackgroundTask> task,
+    Ref<BinaryView> view,
+    Ref<Function> func,
     bool auto_save)
 {
     size_t passes = 1;
 
     std::string func_name = func->GetSymbol()->GetShortName();
 
-    // Not really sure if this even helps. Tried so many different ways and nothing seems to prioritize the function.
     AdvancedFunctionAnalysisDataRequestor priority(func);
+
+    // Ref<LowLevelILFunction> llil = func->GetLowLevelIL();
 
     for (; passes < 100; ++passes)
     {

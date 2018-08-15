@@ -17,16 +17,8 @@
 
 #include "BinaryNinja.h"
 
-void LabelIndirectBranches(
-    BinaryView* view,
-    Function* func);
-
-bool FixObfuscationPass(
-    BinaryView* view,
-    Function* func);
-
 void FixObfuscation(
-    BackgroundTask* task,
-    BinaryView* view,
-    Function* func,
+    Ref<BackgroundTask> task,
+    Ref<BinaryView> view,
+    Ref<Function> func,
     bool auto_save);

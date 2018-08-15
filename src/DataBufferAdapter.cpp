@@ -56,12 +56,12 @@ bool InputDataBufferAdapater::isCompletedSuccessfully() const
 size_t OutputDataBufferAdapater::calculate_growth(const size_t new_size) const
 {
     const size_t old_capacity = buffer_->GetLength();
-    const size_t new_capacity = old_capacity + old_capacity / 2;
+    const size_t new_capacity = old_capacity + (old_capacity >> 1) + 128;
 
     if (new_capacity < new_size)
-	{
-	    return new_size;
-	}
+    {
+        return new_size;
+    }
 
     return new_capacity;
 }
