@@ -122,7 +122,7 @@ void ScanForArrayOfBytes(BinaryView* view)
 
         std::string report;
         
-        report += fmt::format("Found {} result/s in {} ms:\n\n", results.size(), std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count());
+        report += fmt::format("Found {} result/s for \"{}\" in {} ms:\n\n", results.size(), !pattern_mask.empty() ? (pattern_string + ", " + pattern_mask) : (pattern_string), std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count());
 
         for (uint64_t result : results)
         {
