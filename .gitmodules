@@ -8,3 +8,6 @@
 [submodule "vendor/bitsery"]
 	path = vendor/bitsery
 	url = git@github.com:fraillt/bitsery.git
+[submodule "vendor/mem"]
+	path = vendor/mem
+	url = git@github.com:DatBrick/mem.git

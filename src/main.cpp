@@ -19,6 +19,7 @@
 #include "PatchBuilder.h"
 #include "ObfuPasses.h"
 #include "BackgroundTaskThread.h"
+#include "PatternScanner.h"
 
 void RegisterObfuHook(const std::string& arch_name)
 {
@@ -62,6 +63,8 @@ extern "C"
         PluginCommand::RegisterForFunction("Fix Obfuscation 456", ":oof:", &FixObfuscationTask);
         PluginCommand::Register("Load Patches", ":oof:", &LoadPatchesTask);
         PluginCommand::Register("Save Patches", ":oof:", &SavePatchesTask);
+
+        PluginCommand::Register("Scan for Pattern", "Scans for an array of bytes", &ScanForArrayOfBytes);
 
         BinjaLog(InfoLog, "Loaded binja-obfu");
 
