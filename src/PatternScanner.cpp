@@ -20,6 +20,8 @@
 #include <thread>
 #include <mutex>
 
+const size_t MAX_SCAN_RESULTS = 1000;
+
 template <typename ForwardIt, typename UnaryFunction>
 void parallel_for_each(ForwardIt first, ForwardIt last, const UnaryFunction& func)
 {
@@ -77,26 +79,15 @@ void ScanForArrayOfBytes(BinaryView* view)
     std::vector<FormInputField> fields
     {
         FormInputField::TextLine("Pattern"),
-        FormInputField::TextLine("Mask (Optional)")
     };
 
     if (BinaryNinja::GetFormInput(fields, "Input Pattern"))
     {
         std::string pattern_string = fields[0].stringResult;
-        std::string pattern_mask = fields[1].stringResult;
 
         BinjaLog(InfoLog, "Scanning for {}", pattern_string);
 
-        mem::pattern pattern;
-
-        if (!pattern_mask.empty())
-        {
-            pattern = { mem::code_style, pattern_string.c_str(), pattern_mask.c_str() };
-        }
-        else
-        {
-            pattern = { mem::ida_style, pattern_string.c_str() };
-        }
+        mem::pattern pattern(mem::ida_style, pattern_string.c_str());
 
         std::vector<Segment> segments = view->GetSegments();
         std::vector<uint64_t> results;
@@ -122,7 +113,14 @@ void ScanForArrayOfBytes(BinaryView* view)
 
         std::string report;
         
-        report += fmt::format("Found {} result/s for \"{}\" in {} ms:\n\n", results.size(), !pattern_mask.empty() ? (pattern_string + ", " + pattern_mask) : (pattern_string), std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count());
+        report += fmt::format("Found {} result/s for \"{}\" in {} ms:\n\n", results.size(), pattern_string, std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count());
+
+        if (results.size() > MAX_SCAN_RESULTS)
+        {
+            report += fmt::format("Too many results, only showing first {}.\n\n", MAX_SCAN_RESULTS);
+
+            results.resize(MAX_SCAN_RESULTS);
+        }
 
         for (uint64_t result : results)
         {
