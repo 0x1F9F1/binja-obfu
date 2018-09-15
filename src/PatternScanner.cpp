@@ -76,15 +76,10 @@ using stopwatch = std::chrono::steady_clock;
 
 void ScanForArrayOfBytes(BinaryView* view)
 {
-    std::vector<FormInputField> fields
-    {
-        FormInputField::TextLine("Pattern"),
-    };
+    std::string pattern_string;
 
-    if (BinaryNinja::GetFormInput(fields, "Input Pattern"))
+    if (BinaryNinja::GetTextLineInput(pattern_string, "Pattern", "Input Pattern"))
     {
-        std::string pattern_string = fields[0].stringResult;
-
         BinjaLog(InfoLog, "Scanning for {}", pattern_string);
 
         mem::pattern pattern(mem::ida_style, pattern_string.c_str());
