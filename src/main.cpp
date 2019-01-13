@@ -19,7 +19,6 @@
 #include "PatchBuilder.h"
 #include "ObfuPasses.h"
 #include "BackgroundTaskThread.h"
-#include "PatternScanner.h"
 
 void RegisterObfuHook(const std::string& arch_name)
 {
@@ -28,14 +27,14 @@ void RegisterObfuHook(const std::string& arch_name)
     Architecture::Register(hook);
 }
 
-void FixObfuscationBackgroundTask(BinaryView* view, Function* func)
+void FixObfuscationBackgroundTask(Ref<BinaryView> view, Ref<Function> func)
 {
     Ref<BackgroundTaskThread> task = new BackgroundTaskThread("De-Obfuscating");
 
     task->Run(&FixObfuscation, Ref<BinaryView>(view), Ref<Function>(func), true);
 }
 
-void FixObfuscationTask(BinaryView* view, Function* func)
+void FixObfuscationTask(Ref<BinaryView> view, Ref<Function> func)
 {
     FixObfuscation(nullptr, view, func, false);
 }
@@ -59,12 +58,10 @@ extern "C"
             RegisterObfuHook(arch);
         }
 
-        PluginCommand::RegisterForFunction("Fix Obfuscation 123", ":oof:", &FixObfuscationBackgroundTask);
-        PluginCommand::RegisterForFunction("Fix Obfuscation 456", ":oof:", &FixObfuscationTask);
-        PluginCommand::Register("Load Patches", ":oof:", &LoadPatchesTask);
-        PluginCommand::Register("Save Patches", ":oof:", &SavePatchesTask);
-
-        PluginCommand::Register("Scan for Pattern", "Scans for an array of bytes", &ScanForArrayOfBytes);
+        PluginCommand::RegisterForFunction("Obfuscation\\Fix Obfuscation Background", "", &FixObfuscationBackgroundTask);
+        PluginCommand::RegisterForFunction("Obfuscation\\Fix Obfuscation", "", &FixObfuscationTask);
+        PluginCommand::Register("Obfuscation\\Load Patches", "", &LoadPatchesTask);
+        PluginCommand::Register("Obfuscation\\Save Patches", "", &SavePatchesTask);
 
         BinjaLog(InfoLog, "Loaded binja-obfu");
 

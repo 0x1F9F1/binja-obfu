@@ -139,10 +139,15 @@ namespace PatchBuilder
         {
             if (db.ZlibCompress(db))
             {
+                std::vector<uint8_t> raw(
+                    static_cast<const uint8_t*>(db.GetData()),
+                    static_cast<const uint8_t*>(db.GetData()) + db.GetLength()
+                );
+
                 Ref<Metadata> patches = new Metadata
                 ({
                     { "version", new Metadata(PATCH_METADATA_VERSION) },
-                    { "data", new Metadata(db) }
+                    { "data", new Metadata(raw) }
                 });
 
                 view.StoreMetadata(PATCH_METADATA_KEY, patches);
@@ -170,7 +175,8 @@ namespace PatchBuilder
 
             if (data.at("version")->GetString() == PATCH_METADATA_VERSION)
             {
-                DataBuffer db = data.at("data")->GetRawBuffer();
+                std::vector<uint8_t> raw = data.at("data")->GetRaw();
+                DataBuffer db(raw.data(), raw.size());
 
                 if (db.ZlibDecompress(db))
                 {
