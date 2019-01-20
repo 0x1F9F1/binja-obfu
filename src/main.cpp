@@ -31,7 +31,7 @@ void FixObfuscationBackgroundTask(Ref<BinaryView> view, Ref<Function> func)
 {
     Ref<BackgroundTaskThread> task = new BackgroundTaskThread("De-Obfuscating");
 
-    task->Run(&FixObfuscation, Ref<BinaryView>(view), Ref<Function>(func), true);
+    task->Run(&FixObfuscation, view, func, true);
 }
 
 void FixObfuscationTask(Ref<BinaryView> view, Ref<Function> func)

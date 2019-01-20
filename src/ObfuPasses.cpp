@@ -20,6 +20,8 @@
 
 #include "fmt/format.h"
 
+#include <thread>
+
 bool CheckTailXrefs(BinaryView* view, Function* func, Function* tail)
 {
     std::set<Ref<Function>> funcs;
@@ -96,7 +98,7 @@ size_t FixTails(BinaryView* view, Function* func)
     return total;
 }
 
-void Flatten(std::vector<PatchBuilder::Token>& patches, LowLevelILInstruction& insn)
+void Flatten(std::vector<PatchBuilder::Token>& patches, const LowLevelILInstruction& insn)
 {
     const std::vector<LowLevelILOperandUsage>& operand_uses = LowLevelILInstruction::operationOperandUsage.at(insn.operation);
 
