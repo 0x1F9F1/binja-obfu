@@ -80,6 +80,7 @@ namespace PatchBuilder
         }
 
         BNBinaryView* view = BNGetFunctionData(function);
+        BNFreeFunction(function);
 
         if (view == nullptr)
         {
@@ -87,6 +88,7 @@ namespace PatchBuilder
         }
 
         const PatchCollection* patches = GetPatchCollection(view);
+        BNFreeBinaryView(view);
 
         if (patches == nullptr)
         {
